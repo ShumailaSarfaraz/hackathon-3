@@ -1,0 +1,6 @@
+export { Search as SearchIcon } from 'lucide-react'
+export { Menu as MenuIcon } from 'lucide-react'
+export { Heart as HeartIcon } from 'lucide-react'
+export { UserRound as UserIcon } from 'lucide-react'
+export { Store as StoreIcon } from 'lucide-react'
+export { BarChart as BarChartIcon } from 'lucide-react'
