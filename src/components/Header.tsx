@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import Image from "next/image";
 import { auth } from "../../firebase/firebase";
 import { signOut, User } from "firebase/auth";
-import { fetchUserRole } from "../../firebase/auth";
+import { getAccountType } from "../../firebase/auth";
 
 export const Header = () => {
   const [showSearchModal, setShowSearchModal] = useState(false);
@@ -23,7 +23,7 @@ export const Header = () => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       setUser(user);
       if (user) {
-        const role = await fetchUserRole(user);
+        const role = await getAccountType(user);
         setUserRole(role);
       }
       setIsLoading(false);
@@ -143,7 +143,7 @@ export const Header = () => {
                 Sign Out
               </Button>
             ) : (
-              <Link href="/acc-creation">
+              <Link href="/user-creation">
                 <Button variant="ghost" size="sm" className="ml-4 text-gray-700 hover:bg-gray-100">
                   Sign In
                 </Button>

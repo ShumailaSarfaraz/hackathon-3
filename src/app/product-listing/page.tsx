@@ -49,47 +49,15 @@ type ProductType = {
   quantity: number;
 };
 
-type FilterSettings = {
-  categories: string[];
-  priceRange: string;
-  page: number;
-  itemsPerPage: number;
-};
-
 async function getCategories() {
   const result = await client.fetch(`*[_type == "category"]{ name, slug }`);
   return result;
 }
 
-async function getFilteredProducts(
-  filters: FilterSettings,
-  searchQuery?: string
-) {
-  const { categories, priceRange, page, itemsPerPage } = filters;
-
-  let priceCondition = "";
-  if (priceRange) {
-    if (priceRange === "250+") {
-      priceCondition = "price >= 250";
-    } else {
-      const [min, max] = priceRange.split(" - ").map(Number);
-      priceCondition = `price >= ${min} && price <= ${max}`;
-    }
-  }
-
-  const categoryCondition =
-    categories.length > 0
-      ? `category->name in [${categories.map((c) => `"${c}"`).join(", ")}]`
-      : "";
-
+async function getFilteredProducts(searchQuery?: string) {
   const searchCondition = searchQuery ? `name match "${searchQuery}*"` : "";
 
-  const conditions = [
-    `_type == "product"`,
-    categoryCondition,
-    priceCondition,
-    searchCondition,
-  ]
+  const conditions = [`_type == "product"`, searchCondition]
     .filter(Boolean)
     .join(" && ");
 
@@ -103,7 +71,7 @@ async function getFilteredProducts(
       category->,
       tags,
       quantity
-    }[${(page - 1) * itemsPerPage}...${page * itemsPerPage}]`;
+    }`;
 
   const items = await client.fetch(query);
   return items;
@@ -118,9 +86,6 @@ function ProductList() {
   const [items, setItems] = useState<ProductType[]>([]);
   const [categoryList, setCategoryList] = useState<CategoryType[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [itemsPerPage] = useState(12);
-  const [totalItems, setTotalItems] = useState(0);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
 
@@ -144,12 +109,6 @@ function ProductList() {
         setCategoryList(uniqueCategories);
 
         const products = await getFilteredProducts(
-          {
-            categories: [],
-            priceRange: "",
-            page: page,
-            itemsPerPage: itemsPerPage,
-          },
           query ? decodeURIComponent(query) : undefined
         );
         setItems(products);
@@ -160,30 +119,7 @@ function ProductList() {
       }
     };
     initializeData();
-  }, [query, page]);
-
-  useEffect(() => {
-    const loadProducts = async () => {
-      try {
-        setLoading(true);
-        const products = await getFilteredProducts(
-          {
-            categories: activeCategories,
-            priceRange: selectedPrice,
-            page: page,
-            itemsPerPage: itemsPerPage,
-          },
-          query ? decodeURIComponent(query) : undefined
-        );
-        setItems(products);
-      } catch (error) {
-        console.error("Error loading products:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadProducts();
-  }, [activeCategories, selectedPrice, query, page]);
+  }, [query]);
 
   const toggleCategory = (category: string) => {
     setActiveCategories((prev) =>
@@ -201,8 +137,6 @@ function ProductList() {
     "Product type": categoryList.map((cat) => cat.name),
     Price: ["0 - 100", "101 - 250", "250+"],
   };
-
-  const totalPages = Math.ceil(3);
 
   return (
     <>
@@ -302,7 +236,7 @@ function ProductList() {
                           </div>
                           {item._id ? (
                             <>
-                              <Link href={`/products/${item._id}`}>
+                              <Link href={`/product-details/${item._id}`}>
                                 <Button
                                   className="w-full transition-transform duration-200 hover:scale-105 active:scale-95 mt-1"
                                   variant="outline"
@@ -340,23 +274,6 @@ function ProductList() {
                       <p>Try adjusting your search or filters.</p>
                     </div>
                   )}
-                  <div className="flex justify-center mt-8 font-clash">
-                    <Button
-                      disabled={page === 1}
-                      onClick={() => setPage(page - 1)}
-                    >
-                      Previous
-                    </Button>
-                    <span className="mx-4">
-                      Page {page} of {totalPages}
-                    </span>
-                    <Button
-                      disabled={page === 2}
-                      onClick={() => setPage(page + 1)}
-                    >
-                      Next
-                    </Button>
-                  </div>
                 </div>
               )}
             </div>

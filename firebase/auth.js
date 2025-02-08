@@ -1,54 +1,98 @@
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
-import { doc, setDoc, getDoc } from "firebase/firestore";
-import { auth, db } from "./firebase";
+import { 
+  createUserWithEmailAndPassword as register, 
+  signInWithEmailAndPassword as login, 
+  signOut as logout, 
+  updateProfile as update 
+} from "firebase/auth";
+import { 
+  doc as getDocRef, 
+  setDoc as saveDoc, 
+  getDoc as fetchDoc 
+} from "firebase/firestore";
+import { auth, firestore } from "./firebase";
 
-export const registerUser = async (fullName, location, handle, contact, userEmail, userPass, role) => {
+// Register a new user with email and additional details
+export const createAccount = async (
+  fullName,
+  userAddress,
+  userNickname,
+  userPhone,
+  userEmail,
+  userPassword,
+  accountType
+) => {
   try {
-    const newUser = await createUserWithEmailAndPassword(auth, userEmail, userPass);
-    const { user } = newUser;
+    // Create user in Firebase Authentication
+    const credentials = await register(auth, userEmail, userPassword);
+    const newUser = credentials.user;
 
-    await setDoc(doc(db, "users", user.uid), {
-      uid: user.uid,
-      fullName,
-      userEmail,
-      role,
-      ...(role === "buyer" && { location, handle, contact }),
-      joinedOn: new Date().toISOString(),
-    });
+    // Update the user's display name in Firebase Auth
+    await update(newUser, { displayName: fullName });
 
-    return user;
-  } catch (err) {
-    throw err;
+    // Save user details in Firestore
+    const userData = {
+      uid: newUser.uid,
+      displayName: fullName,
+      email: userEmail,
+      accountType: accountType,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Add additional fields for buyers
+    if (accountType === "buyer") {
+      userData.address = userAddress;
+      userData.username = userNickname;
+      userData.phone = userPhone;
+    }
+
+    // Save the user data to Firestore
+    await saveDoc(getDocRef(firestore, "users", newUser.uid), userData);
+
+    return newUser;
+  } catch (error) {
+    throw new Error(`Account creation failed: ${error.message}`);
   }
 };
 
-export const loginUser = async (userEmail, userPass) => {
+// Log in an existing user with email and password
+export const authenticate = async (email, password) => {
   try {
-    const credentials = await signInWithEmailAndPassword(auth, userEmail, userPass);
+    const credentials = await login(auth, email, password);
     return credentials.user;
-  } catch (err) {
-    throw err;
+  } catch (error) {
+    throw new Error(`Login failed: ${error.message}`);
   }
 };
 
-export const logOutUser = async () => {
+// Log out the current user
+export const endSession = async () => {
   try {
-    await signOut(auth);
-  } catch (err) {
-    throw err;
+    await logout(auth);
+  } catch (error) {
+    throw new Error(`Logout failed: ${error.message}`);
   }
 };
 
-export const fetchUserRole = async (currentUser) => {
-  if (!currentUser) return null;
+// Fetch the account type of a user
+export const getAccountType = async (user) => {
+  if (!user) return null;
 
-  const userDocRef = doc(db, "users", currentUser.uid);
-  const userSnapshot = await getDoc(userDocRef);
+  try {
+    const userRef = getDocRef(firestore, "users", user.uid);
+    const userSnapshot = await fetchDoc(userRef);
 
-  return userSnapshot.exists() ? userSnapshot.data().role || "buyer" : "buyer";
+    if (userSnapshot.exists()) {
+      return userSnapshot.data().accountType || "buyer";
+    }
+
+    return "buyer";
+  } catch (error) {
+    throw new Error(`Failed to fetch account type: ${error.message}`);
+  }
 };
 
-export const checkIfAdmin = async (currentUser) => {
-  const role = await fetchUserRole(currentUser);
-  return role === "admin";
+// Check if the user is an admin
+export const verifyAdmin = async (user) => {
+  const accountType = await getAccountType(user);
+  return accountType === "admin";
 };

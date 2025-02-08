@@ -5,155 +5,150 @@ import { Button } from "@/components/ui/button"
 import { auth } from "../../firebase/firebase"
 import { useRouter } from 'next/navigation'
 
-interface UserReview {
-  stars: number
-  feedback: string
-  timestamp: string
+interface Review {
+  rating: number
+  comment: string
+  date: string
   userId: string
-  username: string
-  email: string
+  userName: string
+  userEmail: string
 }
 
-interface ReviewSectionProps {
+interface RatingsAndReviewsProps {
   productId: string
 }
 
-export function ReviewSection({ productId }: ReviewSectionProps) {
-  const [selectedStars, setSelectedStars] = useState(0)
-  const [feedback, setFeedback] = useState("")
-  const [userReviews, setUserReviews] = useState<UserReview[]>([])
-  const currentUser = auth.currentUser
-  const router = useRouter()
+export function ReviewSection({ productId }: RatingsAndReviewsProps) {
+  const [rating, setRating] = useState(0)
+  const [comment, setComment] = useState("")
+  const [reviews, setReviews] = useState<Review[]>([])
+  const user = auth.currentUser
+  const router = useRouter() // Hook to navigate to another page
 
-  // Load reviews from localStorage on component mount
   useEffect(() => {
-    const savedReviews = localStorage.getItem(`product_reviews_${productId}`)
-    if (savedReviews) {
-      setUserReviews(JSON.parse(savedReviews))
+    const storedReviews = localStorage.getItem(`reviews_${productId}`)
+    if (storedReviews) {
+      setReviews(JSON.parse(storedReviews))
     }
   }, [productId])
 
-  // Handle star rating selection
-  const handleStarClick = (stars: number) => {
-    setSelectedStars(stars)
+  const handleRatingChange = (newRating: number) => {
+    setRating(newRating)
   }
 
-  // Submit a new review
-  const submitReview = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!currentUser) {
-      alert("Please log in to submit a review!")
+    if (!user) {
+      alert("You must be logged in to submit a review!")
       return
     }
 
-    const newReview: UserReview = {
-      stars: selectedStars,
-      feedback,
-      timestamp: new Date().toISOString(),
-      userId: currentUser.uid,
-      username: currentUser.displayName || "Anonymous",
-      email: currentUser.email || "No email",
+    const newReview: Review = {
+      rating,
+      comment,
+      date: new Date().toISOString(),
+      userId: user.uid,
+      userName: user.displayName || "Anonymous",
+      userEmail: user.email || "No email",
     }
 
-    const updatedReviews = [...userReviews, newReview]
-    setUserReviews(updatedReviews)
-    localStorage.setItem(`product_reviews_${productId}`, JSON.stringify(updatedReviews))
-    setSelectedStars(0)
-    setFeedback("")
+    const updatedReviews = [...reviews, newReview]
+    setReviews(updatedReviews)
+    localStorage.setItem(`reviews_${productId}`, JSON.stringify(updatedReviews))
+    setRating(0)
+    setComment("")
   }
 
-  // Delete a review
-  const deleteReview = (index: number) => {
-    const review = userReviews[index]
-    if (review.userId !== currentUser?.uid) {
+  const handleDeleteReview = (index: number) => {
+    const reviewToDelete = reviews[index]
+    if (reviewToDelete.userId !== user?.uid) {
       alert("You can only delete your own reviews!")
       return
     }
 
-    const updatedReviews = userReviews.filter((_, i) => i !== index)
-    setUserReviews(updatedReviews)
-    localStorage.setItem(`product_reviews_${productId}`, JSON.stringify(updatedReviews))
+    const updatedReviews = reviews.filter((_, i) => i !== index)
+    setReviews(updatedReviews)
+    localStorage.setItem(`reviews_${productId}`, JSON.stringify(updatedReviews))
   }
 
-  // Redirect to the sign-up page
-  const redirectToSignUp = () => {
-    router.push('/acc-creation')
+  const handleSignUpRedirect = () => {
+    router.push('/acc-creation') // Redirect to the sign-up page
   }
 
   return (
-    <div className="my-8">
-      {currentUser ? (
+    <div className="mt-8 mb-16">
+      {user ? (
         <>
-          <h2 className="text-3xl font-semibold mb-6">Share Your Thoughts</h2>
+          <h2 className="font-clash text-3xl font-medium mb-4">Ratings & Reviews</h2>
 
           <div className="mb-8">
-            <form onSubmit={submitReview} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block mb-2 font-medium">Rate This Product</label>
+                <label className="block mb-2 font-clash">Your Rating</label>
                 <div className="flex">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <Star
                       key={star}
-                      className={`w-6 h-6 cursor-pointer ${star <= selectedStars ? "text-yellow-400 fill-current" : "text-gray-300"}`}
-                      onClick={() => handleStarClick(star)}
+                      className={`w-6 h-6 cursor-pointer ${star <= rating ? "text-yellow-400 fill-current" : "text-gray-300"}`}
+                      onClick={() => handleRatingChange(star)}
                     />
                   ))}
                 </div>
               </div>
               <div>
-                <label htmlFor="feedback" className="block mb-2 font-medium">Your Feedback</label>
+                <label htmlFor="comment" className="block mb-2 font-clash">Your Review</label>
                 <textarea
-                  id="feedback"
-                  value={feedback}
-                  onChange={(e) => setFeedback(e.target.value)}
-                  className="w-full p-2 border rounded"
+                  id="comment"
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  className="w-full p-2 border rounded font-clash"
                   rows={4}
                   required
                 />
               </div>
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
-                Submit Feedback
+              <Button type="submit" className="bg-[#2A254B] hover:bg-[#2A254B]/90 text-white font-clash">
+                Submit Review
               </Button>
             </form>
           </div>
         </>
       ) : (
         <div className="text-center">
-          <p className="text-lg text-gray-500 mb-4">Please log in to leave a review.</p>
-          <Button onClick={redirectToSignUp} className="bg-blue-600 hover:bg-blue-700 text-white">
-            Log In / Sign Up
+          <p className="font-clash text-lg text-gray-500 mb-4">You must be logged in to write a review.</p>
+          <Button onClick={handleSignUpRedirect} className="bg-[#2A254B] hover:bg-[#2A254B]/90 text-white font-clash">
+            Sign In / Sign Up Now
           </Button>
         </div>
       )}
 
       <div>
-        <h3 className="text-2xl font-semibold mb-6">Customer Feedback</h3>
-        {userReviews.length === 0 ? (
-          <p>No reviews yet. Be the first to share your experience!</p>
+        <h3 className="font-clash text-2xl font-medium mb-4">Customer Reviews</h3>
+        {reviews.length === 0 ? (
+          <p className="font-clash">No reviews yet. Be the first to review this product!</p>
         ) : (
-          userReviews.map((review, index) => (
-            <div key={index} className="mb-6 pb-6 border-b last:border-b-0">
+          reviews.map((review, index) => (
+            <div key={index} className="mb-4 pb-4 border-b last:border-b-0">
               <div className="flex items-center mb-2">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <Star
                     key={star}
-                    className={`w-4 h-4 ${star <= review.stars ? "text-yellow-400 fill-current" : "text-gray-300"}`}
+                    className={`w-4 h-4 ${star <= review.rating ? "text-yellow-400 fill-current" : "text-gray-300"}`}
                   />
                 ))}
-                <span className="ml-2 text-sm text-gray-600">
-                  {new Date(review.timestamp).toLocaleDateString()}
+                <span className="ml-2 text-sm text-gray-600 font-clash">
+                  {new Date(review.date).toLocaleDateString()}
                 </span>
               </div>
-              <p className="mb-2">{review.feedback}</p>
-              <p className="text-sm text-gray-500">
-                By: {review.username} ({review.email})
+              <p className="font-clash">{review.comment}</p>
+              <p className="font-clash text-sm text-gray-500">
+                By: {review.userName} ({review.userEmail})
               </p>
-              {review.userId === currentUser?.uid && (
+              {review.userId === user?.uid && (
                 <Button
-                  onClick={() => deleteReview(index)}
-                  className="mt-2 text-red-600 hover:text-red-800 bg-transparent hover:bg-transparent"
+                  onClick={() => handleDeleteReview(index)}
+                  className="mt-2 text-red-600 hover:text-red-800 font-clash bg-transparent hover:bg-transparent"
                 >
-                  Remove Review
+                  Delete Review
                 </Button>
               )}
             </div>
