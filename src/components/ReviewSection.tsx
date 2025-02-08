@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from "react"
-import { Star } from "lucide-react"
+import { Star, MessageSquare, Trash2, UserCircle, ChevronDown, ChevronUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { auth } from "../../firebase/firebase"
 import { useRouter } from 'next/navigation'
@@ -22,8 +22,11 @@ export function ReviewSection({ productId }: RatingsAndReviewsProps) {
   const [rating, setRating] = useState(0)
   const [comment, setComment] = useState("")
   const [reviews, setReviews] = useState<Review[]>([])
+  const [showReviewForm, setShowReviewForm] = useState(false)
+  const [hoveredRating, setHoveredRating] = useState(0)
+  const [sortBy, setSortBy] = useState<'newest' | 'highest' | 'lowest'>('newest')
   const user = auth.currentUser
-  const router = useRouter() // Hook to navigate to another page
+  const router = useRouter()
 
   useEffect(() => {
     const storedReviews = localStorage.getItem(`reviews_${productId}`)
@@ -31,10 +34,6 @@ export function ReviewSection({ productId }: RatingsAndReviewsProps) {
       setReviews(JSON.parse(storedReviews))
     }
   }, [productId])
-
-  const handleRatingChange = (newRating: number) => {
-    setRating(newRating)
-  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -57,6 +56,7 @@ export function ReviewSection({ productId }: RatingsAndReviewsProps) {
     localStorage.setItem(`reviews_${productId}`, JSON.stringify(updatedReviews))
     setRating(0)
     setComment("")
+    setShowReviewForm(false)
   }
 
   const handleDeleteReview = (index: number) => {
@@ -71,89 +71,180 @@ export function ReviewSection({ productId }: RatingsAndReviewsProps) {
     localStorage.setItem(`reviews_${productId}`, JSON.stringify(updatedReviews))
   }
 
-  const handleSignUpRedirect = () => {
-    router.push('/acc-creation') // Redirect to the sign-up page
-  }
+  const sortedReviews = [...reviews].sort((a, b) => {
+    switch (sortBy) {
+      case 'newest':
+        return new Date(b.date).getTime() - new Date(a.date).getTime()
+      case 'highest':
+        return b.rating - a.rating
+      case 'lowest':
+        return a.rating - b.rating
+      default:
+        return 0
+    }
+  })
+
+  const averageRating = reviews.length 
+    ? (reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length).toFixed(1)
+    : '0.0'
 
   return (
-    <div className="mt-8 mb-16">
-      {user ? (
-        <>
-          <h2 className="font-clash text-3xl font-medium mb-4">Ratings & Reviews</h2>
-
-          <div className="mb-8">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block mb-2 font-clash">Your Rating</label>
-                <div className="flex">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star
-                      key={star}
-                      className={`w-6 h-6 cursor-pointer ${star <= rating ? "text-yellow-400 fill-current" : "text-gray-300"}`}
-                      onClick={() => handleRatingChange(star)}
-                    />
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label htmlFor="comment" className="block mb-2 font-clash">Your Review</label>
-                <textarea
-                  id="comment"
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  className="w-full p-2 border rounded font-clash"
-                  rows={4}
-                  required
+    <div className="font-clash">
+      <div className="bg-[#2A254B] text-white p-8 rounded-2xl mb-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-4xl font-medium mb-2">{averageRating}</h2>
+            <div className="flex items-center gap-1 mb-1">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Star
+                  key={star}
+                  className={`w-4 h-4 ${
+                    star <= Number(averageRating) ? "fill-white" : "text-white/30"
+                  }`}
                 />
-              </div>
-              <Button type="submit" className="bg-[#2A254B] hover:bg-[#2A254B]/90 text-white font-clash">
-                Submit Review
-              </Button>
-            </form>
+              ))}
+            </div>
+            <p className="text-white/70">{reviews.length} reviews</p>
           </div>
-        </>
-      ) : (
-        <div className="text-center">
-          <p className="font-clash text-lg text-gray-500 mb-4">You must be logged in to write a review.</p>
-          <Button onClick={handleSignUpRedirect} className="bg-[#2A254B] hover:bg-[#2A254B]/90 text-white font-clash">
-            Sign In / Sign Up Now
+          {user && (
+            <Button
+              onClick={() => setShowReviewForm(!showReviewForm)}
+              className="bg-white text-[#2A254B] hover:bg-white/90"
+            >
+              <MessageSquare className="w-4 h-4 mr-2" />
+              Write a Review
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {showReviewForm && user && (
+        <div className="bg-white border border-[#2A254B]/10 rounded-2xl p-6 mb-8">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block mb-3 text-sm text-[#2A254B]/70">Rating</label>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    type="button"
+                    key={star}
+                    onMouseEnter={() => setHoveredRating(star)}
+                    onMouseLeave={() => setHoveredRating(0)}
+                    onClick={() => setRating(star)}
+                    className="p-2 hover:bg-[#2A254B]/5 rounded-lg transition-colors"
+                  >
+                    <Star
+                      className={`w-6 h-6 ${
+                        star <= (hoveredRating || rating)
+                          ? "text-[#2A254B] fill-current"
+                          : "text-[#2A254B]/20"
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block mb-3 text-sm text-[#2A254B]/70">Review</label>
+              <textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                className="w-full p-4 border border-[#2A254B]/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2A254B]/20"
+                rows={4}
+                placeholder="Share your thoughts about the product..."
+                required
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button
+                type="button"
+                onClick={() => setShowReviewForm(false)}
+                className="bg-transparent text-[#2A254B] hover:bg-[#2A254B]/5"
+              >
+                Cancel
+              </Button>
+              <Button type="submit" className="bg-[#2A254B] hover:bg-[#2A254B]/90">
+                Post Review
+              </Button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {!user && (
+        <div className="bg-white border border-[#2A254B]/10 rounded-2xl p-8 text-center mb-8">
+          <UserCircle className="w-12 h-12 text-[#2A254B]/20 mx-auto mb-4" />
+          <h3 className="text-xl font-medium text-[#2A254B] mb-2">Sign in to write a review</h3>
+          <p className="text-[#2A254B]/60 mb-6">Share your experience with other customers</p>
+          <Button
+            onClick={() => router.push('/user-creation')}
+            className="bg-[#2A254B] hover:bg-[#2A254B]/90"
+          >
+            Sign In / Sign Up
           </Button>
         </div>
       )}
 
-      <div>
-        <h3 className="font-clash text-2xl font-medium mb-4">Customer Reviews</h3>
-        {reviews.length === 0 ? (
-          <p className="font-clash">No reviews yet. Be the first to review this product!</p>
-        ) : (
-          reviews.map((review, index) => (
-            <div key={index} className="mb-4 pb-4 border-b last:border-b-0">
-              <div className="flex items-center mb-2">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Star
-                    key={star}
-                    className={`w-4 h-4 ${star <= review.rating ? "text-yellow-400 fill-current" : "text-gray-300"}`}
-                  />
-                ))}
-                <span className="ml-2 text-sm text-gray-600 font-clash">
-                  {new Date(review.date).toLocaleDateString()}
-                </span>
-              </div>
-              <p className="font-clash">{review.comment}</p>
-              <p className="font-clash text-sm text-gray-500">
-                By: {review.userName} ({review.userEmail})
-              </p>
-              {review.userId === user?.uid && (
-                <Button
-                  onClick={() => handleDeleteReview(index)}
-                  className="mt-2 text-red-600 hover:text-red-800 font-clash bg-transparent hover:bg-transparent"
-                >
-                  Delete Review
-                </Button>
-              )}
+      <div className="bg-white border border-[#2A254B]/10 rounded-2xl p-6">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xl font-medium text-[#2A254B]">Customer Reviews</h3>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as 'newest' | 'highest' | 'lowest')}
+            className="p-2 border border-[#2A254B]/10 rounded-lg text-sm"
+          >
+            <option value="newest">Most Recent</option>
+            <option value="highest">Highest Rated</option>
+            <option value="lowest">Lowest Rated</option>
+          </select>
+        </div>
+
+        <div className="space-y-6">
+          {sortedReviews.length === 0 ? (
+            <div className="text-center py-8 text-[#2A254B]/60">
+              No reviews yet. Be the first to share your thoughts!
             </div>
-          ))
-        )}
+          ) : (
+            sortedReviews.map((review, index) => (
+              <div
+                key={index}
+                className="border-b border-[#2A254B]/10 last:border-0 pb-6 last:pb-0"
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <p className="font-medium text-[#2A254B] mb-1">{review.userName}</p>
+                    <div className="flex items-center gap-2">
+                      <div className="flex">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star
+                            key={star}
+                            className={`w-4 h-4 ${
+                              star <= review.rating
+                                ? "text-[#2A254B] fill-current"
+                                : "text-[#2A254B]/20"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-sm text-[#2A254B]/60">
+                        {new Date(review.date).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                  {review.userId === user?.uid && (
+                    <Button
+                      onClick={() => handleDeleteReview(index)}
+                      className="text-red-500 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+                <p className="text-[#2A254B]/80">{review.comment}</p>
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </div>
   )

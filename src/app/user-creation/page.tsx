@@ -64,7 +64,7 @@ export default function AuthenticationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#2A254B] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#2A254B] flex items-center justify-center p-4 font-clash">
       <div className="w-full max-w-xl bg-white/5 backdrop-blur-lg rounded-3xl shadow-2xl overflow-hidden border border-white/10">
         <div className="flex mb-8">
           <button
