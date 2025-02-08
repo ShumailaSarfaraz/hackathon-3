@@ -18,8 +18,7 @@ export const createAccount = async (
   userNickname,
   userPhone,
   userEmail,
-  userPassword,
-  accountType
+  userPassword
 ) => {
   try {
     // Create user in Firebase Authentication
@@ -34,16 +33,11 @@ export const createAccount = async (
       uid: newUser.uid,
       displayName: fullName,
       email: userEmail,
-      accountType: accountType,
       createdAt: new Date().toISOString(),
+      address: userAddress,
+      username: userNickname,
+      phone: userPhone,
     };
-
-    // Add additional fields for buyers
-    if (accountType === "buyer") {
-      userData.address = userAddress;
-      userData.username = userNickname;
-      userData.phone = userPhone;
-    }
 
     // Save the user data to Firestore
     await saveDoc(getDocRef(firestore, "users", newUser.uid), userData);
@@ -71,28 +65,4 @@ export const endSession = async () => {
   } catch (error) {
     throw new Error(`Logout failed: ${error.message}`);
   }
-};
-
-// Fetch the account type of a user
-export const getAccountType = async (user) => {
-  if (!user) return null;
-
-  try {
-    const userRef = getDocRef(firestore, "users", user.uid);
-    const userSnapshot = await fetchDoc(userRef);
-
-    if (userSnapshot.exists()) {
-      return userSnapshot.data().accountType || "buyer";
-    }
-
-    return "buyer";
-  } catch (error) {
-    throw new Error(`Failed to fetch account type: ${error.message}`);
-  }
-};
-
-// Check if the user is an admin
-export const verifyAdmin = async (user) => {
-  const accountType = await getAccountType(user);
-  return accountType === "admin";
 };

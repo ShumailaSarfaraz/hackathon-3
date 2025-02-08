@@ -2,30 +2,24 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Search, Menu, Heart, UserRound, BarChart } from "lucide-react";
+import { Search, Menu, Heart, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Image from "next/image";
 import { auth } from "../../firebase/firebase";
 import { signOut, User } from "firebase/auth";
-import { getAccountType } from "../../firebase/auth";
 
 export const Header = () => {
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [searchInput, setSearchInput] = useState("");
-  const [user, setUser] = useState<User | null>(null); // Explicitly define the type
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
       setUser(user);
-      if (user) {
-        const role = await getAccountType(user);
-        setUserRole(role);
-      }
       setIsLoading(false);
     });
 
@@ -50,35 +44,12 @@ export const Header = () => {
     try {
       await signOut(auth);
       if (user) {
-        localStorage.removeItem(`${user.uid}`); // Now TypeScript knows `user` has a `uid` property
+        localStorage.removeItem(`${user.uid}`);
       }
       router.push("/");
     } catch (error) {
       console.error("Error signing out:", error);
     }
-  };
-
-  const renderUserSection = () => {
-    if (userRole === "admin") {
-      return (
-        <Link href="/admin-dashboard">
-          <Button variant="ghost" size="icon" className="text-gray-400 hover:text-gray-500">
-            <BarChart className="h-6 w-6" />
-            <span className="sr-only">Analytics Dashboard</span>
-          </Button>
-        </Link>
-      );
-    } else if (userRole === "buyer") {
-      return (
-        <Link href="/profile">
-          <Button variant="ghost" size="icon" className="text-gray-400 hover:text-gray-500">
-            <UserRound className="h-6 w-6" />
-            <span className="sr-only">Profile</span>
-          </Button>
-        </Link>
-      );
-    }
-    return null;
   };
 
   if (isLoading) {
@@ -122,20 +93,29 @@ export const Header = () => {
 
           {/* Right: Desktop Navigation */}
           <div className="hidden lg:flex items-center">
-            {/* Cart (Buyers Only) */}
-            {(!user || userRole === "buyer") && (
-              <>
-                <Link href="/cart">
-                  <Button variant="ghost" size="icon" className="ml-4 text-gray-400 hover:text-gray-500">
-                    <Image src="/icons/Shopping--cart.svg" alt="Shopping cart" width={16} height={16} />
-                    <span className="sr-only">Shopping cart</span>
-                  </Button>
-                </Link>
-              </>
-            )}
+            {/* Cart (Always Visible) */}
+            <Link href="/cart">
+              <Button variant="ghost" size="icon" className="ml-4 text-gray-400 hover:text-gray-500">
+                <Image
+                  src="/icons/Shopping--cart.svg"
+                  alt="Shopping cart"
+                  width={16}
+                  height={16}
+                  style={{ display: "block" }} // Ensure the image is visible
+                />
+                <span className="sr-only">Shopping cart</span>
+              </Button>
+            </Link>
 
-            {/* Profile or Analytics */}
-            {user && renderUserSection()}
+            {/* Profile */}
+            {user && (
+              <Link href="/profile">
+                <Button variant="ghost" size="icon" className="text-gray-400 hover:text-gray-500">
+                  <UserRound className="h-6 w-6" />
+                  <span className="sr-only">Profile</span>
+                </Button>
+              </Link>
+            )}
 
             {/* Sign In / Sign Out */}
             {user ? (

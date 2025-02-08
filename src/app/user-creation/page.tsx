@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { createAccount, authenticate, getAccountType } from "../../../firebase/auth"
-import { auth } from "../../../firebase/firebase"
-import { Lock, Mail, Phone, MapPin, User, UserCircle } from "lucide-react"
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { createAccount, authenticate } from "../../../firebase/auth";
+import { auth } from "../../../firebase/firebase";
+import { Lock, Mail, Phone, MapPin, User, UserCircle } from "lucide-react";
 
 export default function AuthenticationPage() {
   const [formData, setFormData] = useState({
@@ -13,55 +13,49 @@ export default function AuthenticationPage() {
     userHandle: "",
     contactNumber: "",
     emailAddress: "",
-    secretCode: ""
-  })
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [errorMessage, setErrorMessage] = useState("")
-  const [activeTab, setActiveTab] = useState("login")
-  const router = useRouter()
+    secretCode: "",
+  });
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [activeTab, setActiveTab] = useState("login");
+  const router = useRouter();
 
   useEffect(() => {
-    const authListener = auth.onAuthStateChanged(async (user) => {
+    const authListener = auth.onAuthStateChanged((user) => {
       if (user) {
-        const userRole = await getAccountType(user)
+        router.push("/"); // Redirect to home page after login
       }
-    })
-    return () => authListener()
-  }, [])
+    });
+    return () => authListener();
+  }, [router]);
 
-  const handleInputChange = (e:any) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
-  }
+  const handleInputChange = (e: any) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
   const handleAuthentication = async (action: "register" | "login") => {
-    setIsProcessing(true)
-    setErrorMessage("")
+    setIsProcessing(true);
+    setErrorMessage("");
     try {
-      const user = action === "register"
-        ? await createAccount(
-            formData.fullName,
-            formData.userLocation,
-            formData.userHandle,
-            formData.contactNumber,
-            formData.emailAddress,
-            formData.secretCode,
-            "buyer"
-          )
-        : await authenticate(formData.emailAddress, formData.secretCode)
-
-      const userRole = await getAccountType(user)
-      
-      switch(userRole) {
-        case "buyer": router.push("/"); break;
-        case "admin": router.push("/admin-dashboard"); break;
-        case "manager": router.push("/manager-dashboard"); break;
+      if (action === "register") {
+        await createAccount(
+          formData.fullName,
+          formData.userLocation,
+          formData.userHandle,
+          formData.contactNumber,
+          formData.emailAddress,
+          formData.secretCode
+        );
+      } else {
+        await authenticate(formData.emailAddress, formData.secretCode);
       }
+      router.push("/"); // Redirect to home page after successful authentication
     } catch (error: any) {
-      setErrorMessage(error.message)
+      setErrorMessage(error.message);
     } finally {
-      setIsProcessing(false)
+      setIsProcessing(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-[#2A254B] flex items-center justify-center p-4 font-clash">
@@ -200,5 +194,5 @@ export default function AuthenticationPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
